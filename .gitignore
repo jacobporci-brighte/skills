@@ -1,0 +1,18 @@
+# Ignore build artifacts and dependencies
+node_modules/
+dist/
+build/
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# But keep the .cursor directory
+!.cursor/
