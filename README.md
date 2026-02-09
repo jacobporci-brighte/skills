@@ -5,7 +5,7 @@ A collection of AI agent skills and coding patterns for specialized development 
 ## Available Skills
 
 ### Admin Portal AI - Senior Frontend Engineer
-**ID:** `admin-portal-agent`  
+**Directory:** `admin-portal-agent`  
 **Category:** Frontend Development  
 **Tags:** React, TypeScript, Testing, Modal Patterns, Vitest, TanStack
 
@@ -28,9 +28,25 @@ npx skills add jacobporci-brighte/skills --list
 npx skills add jacobporci-brighte/skills/admin-portal-agent
 ```
 
+Or add the entire repository:
+```bash
+npx skills add jacobporci-brighte/skills
+```
+
 ## Contributing
 
 To add new skills:
-1. Create a new `.md` file in an appropriate subdirectory
-2. Update `skills.json` with the skill metadata
+1. Create a new directory with a descriptive name (e.g., `backend-engineer`)
+2. Add a `SKILL.md` file in that directory with the skill instructions
 3. Document the skill in this README
+
+## Structure
+
+```
+skills/
+├── README.md
+└── admin-portal-agent/
+    └── SKILL.md
+```
+
+Each skill must be in its own directory with a `SKILL.md` file.
