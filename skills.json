@@ -1,0 +1,12 @@
+{
+  "skills": [
+    {
+      "id": "admin-portal-agent",
+      "name": "Admin Portal AI - Senior Frontend Engineer",
+      "description": "Senior frontend engineer for React/TypeScript admin portal with TanStack Router/Query, React Hook Form, Zod, and Vitest. Includes modal patterns, testing standards, and code organization guidelines.",
+      "path": "portal-hub/admin-portal-agent.md",
+      "category": "frontend",
+      "tags": ["react", "typescript", "testing", "frontend", "modal-patterns", "vitest", "tanstack"]
+    }
+  ]
+}
