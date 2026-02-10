@@ -406,6 +406,57 @@ beforeEach(() => {
 5. **Avoid fake timers** in form tests - they interfere with validation
 6. **Use `screen.findByText()`** for validation errors (waits for element to appear)
 7. **Test incrementally** - add one test at a time and verify it passes
+8. **Handle timers properly** - if component uses `setTimeout`, enable fake timers AFTER async operations complete
+
+**Handling `setTimeout` in Components:**
+
+When testing components that use `setTimeout` (e.g., auto-closing modals), follow this pattern:
+
+```typescript
+it('should close modal after 2 seconds on successful submission', async () => {
+  const mockOnToggle = vi.fn();
+  const { user } = await render(<Modal isOpen={true} onToggle={mockOnToggle} />);
+
+  // Complete form and submit
+  await user.click(saveButton);
+  await waitFor(() => expect(mockMutate).toHaveBeenCalled());
+
+  // ✅ Enable fake timers AFTER async operations complete
+  vi.useFakeTimers();
+
+  // Trigger success callback (which starts the setTimeout)
+  act(() => {
+    capturedOnSuccess?.();
+  });
+
+  // Verify modal hasn't closed yet
+  expect(mockOnToggle).not.toHaveBeenCalled();
+
+  // Fast-forward time
+  act(() => {
+    vi.advanceTimersByTime(2000);
+  });
+
+  // Verify timer completed
+  expect(mockOnToggle).toHaveBeenCalled();
+});
+
+// ✅ Use afterEach to always restore real timers
+afterEach(() => {
+  vi.useRealTimers();
+});
+```
+
+**❌ DON'T enable fake timers before async operations:**
+
+```typescript
+it('will timeout', async () => {
+  vi.useFakeTimers(); // ❌ Too early!
+  await render(...); // This will timeout
+  await user.click(...); // This will timeout
+  await waitFor(...); // This won't work with frozen time
+});
+```
 
 **Build Tests Incrementally:**
 
@@ -459,10 +510,12 @@ it('should display success message on successful submission', async () => {
 
 - ❌ Using complex mock implementations that try to mimic the real hook behavior
 - ❌ Not capturing callbacks during hook setup
-- ❌ Using fake timers unnecessarily
+- ❌ Enabling fake timers BEFORE async operations (causes timeouts in `render()`, `waitFor()`, etc.)
+- ❌ Not restoring real timers in `afterEach()` (causes subsequent tests to fail)
 - ❌ Using `userEvent.type()` for large text strings (500+ chars = timeout)
 - ❌ Not using `await waitFor()` when checking if mutation was called
 - ❌ Trying to test success/error flows without triggering captured callbacks
+- ❌ Calling `vi.useRealTimers()` in individual tests when `afterEach()` already handles cleanup
 
 **When to Use Which:**
 
@@ -603,6 +656,9 @@ pnpm build --mode=test
 - **Use `fireEvent.change()` for text inputs and `user.click()` for buttons**
 - **Build tests incrementally, verifying each test passes before adding the next**
 - **Use `screen.findByText()` for async content like validation errors**
+- **Enable fake timers AFTER async operations complete, not before**
+- **Always restore real timers in `afterEach(() => vi.useRealTimers())`**
+- **Use `act()` when triggering callbacks or advancing timers**
 
 ### ❌ AVOID:
 
@@ -620,7 +676,8 @@ pnpm build --mode=test
 - **Testing deprecated functionality that's been refactored out**
 - **Trying to mock callbacks in the `mutate()` call - capture them during hook setup instead**
 - **Using `userEvent.type()` for large text inputs (500+ chars) - causes test timeouts**
-- **Using `vi.useFakeTimers()` in form tests - interferes with validation**
+- **Using `vi.useFakeTimers()` before async operations - causes `waitFor` and user interactions to timeout**
+- **Not restoring real timers with `afterEach(() => vi.useRealTimers())` - causes subsequent tests to fail**
 - **Complex mock implementations that try to replicate real hook behavior**
 - **Adding all tests at once - build incrementally and verify each works**
 
