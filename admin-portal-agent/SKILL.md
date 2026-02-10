@@ -318,6 +318,163 @@ vi.mock('src/hooks/userPermissions', () => ({
 }));
 ```
 
+### Modal Testing Best Practices (Mutation-Based Patterns)
+
+**CRITICAL: When testing modals that use mutation hooks (e.g., `useCreateLogMutation`, `useUpdateAccreditationApplicationMutation`), follow these patterns learned from production debugging:**
+
+**✅ CORRECT Approach - Capture mutation callbacks:**
+
+```typescript
+// Mock setup - capture the callbacks passed to the hook
+const mockMutate = vi.fn();
+const mockInvalidateQueries = vi.fn();
+let capturedOnSuccess: (() => void) | undefined;
+let capturedOnError: (() => void) | undefined;
+
+vi.mock('@brighte/core', async () => {
+  const actual = await vi.importActual('@brighte/core');
+  return {
+    ...actual,
+    useCreateLogMutation: (options: any) => {
+      // Capture callbacks for later triggering in tests
+      capturedOnSuccess = options?.onSuccess;
+      capturedOnError = options?.onError;
+      return {
+        mutate: mockMutate,
+        isLoading: false,
+      };
+    },
+    useAccreditationApplicationQuery: {
+      getKey: vi.fn((params: { applicationId: string }) => ['AccreditationApplication', params.applicationId]),
+    },
+  };
+});
+
+// In tests - trigger callbacks explicitly
+it('should display success message after successful submission', async () => {
+  const { user } = await render(<AddNoteModal isOpen={true} onToggle={() => {}} />);
+
+  const textarea = screen.getByPlaceholderText('Type your note here...');
+  fireEvent.change(textarea, { target: { value: 'Test note' } });
+
+  const saveButton = screen.getByRole('button', { name: 'Save note' });
+  await user.click(saveButton);
+
+  // Wait for mutation to be called
+  await waitFor(() => {
+    expect(mockMutate).toHaveBeenCalledWith({
+      input: {
+        applicationId: 'test-app-id',
+        message: 'Test note',
+      },
+    });
+  });
+
+  // Trigger the success callback
+  act(() => {
+    capturedOnSuccess?.();
+  });
+
+  // Verify success message appears
+  expect(screen.getByText(SUCCESS_MESSAGES.ADD_NOTE)).toBeInTheDocument();
+});
+```
+
+**❌ WRONG Approaches - These will cause test failures:**
+
+```typescript
+// ❌ DON'T: Try to mock callbacks in mutate call
+mockMutate.mockImplementationOnce((_vars, options: any) => {
+  options?.onSuccess?.(); // Callbacks aren't passed to mutate in our pattern!
+});
+
+// ❌ DON'T: Use userEvent.type() for large text inputs (causes timeouts)
+await user.type(textarea, "a".repeat(500)); // Times out!
+
+// ❌ DON'T: Use vi.useFakeTimers() unless you specifically need time control
+beforeEach(() => {
+  vi.useFakeTimers(); // Can interfere with form validation and async operations
+});
+```
+
+**Key Learnings:**
+
+1. **Mutation callbacks are set during hook initialization**, not during `mutate()` call
+2. **Capture callbacks** in the mock hook setup for later triggering
+3. **Use `fireEvent.change()`** for text inputs (faster), reserve `user.type()` for small strings
+4. **Use `user.click()`** for buttons to properly simulate user interaction
+5. **Avoid fake timers** in form tests - they interfere with validation
+6. **Use `screen.findByText()`** for validation errors (waits for element to appear)
+7. **Test incrementally** - add one test at a time and verify it passes
+
+**Build Tests Incrementally:**
+
+```typescript
+// Step 1: Basic rendering (ensure mocks work)
+it('should render the modal when isOpen is true', async () => {
+  await render(<AddNoteModal isOpen={true} onToggle={() => {}} />);
+  expect(screen.getByRole('heading', { name: 'Add note' })).toBeInTheDocument();
+});
+
+// Step 2: Form submission (verify mutation gets called)
+it('should call mutation when form is submitted', async () => {
+  const { user } = await render(<AddNoteModal isOpen={true} onToggle={() => {}} />);
+  const textarea = screen.getByPlaceholderText('Type your note here...');
+  fireEvent.change(textarea, { target: { value: 'Test note' } });
+  const saveButton = screen.getByRole('button', { name: 'Save note' });
+  await user.click(saveButton);
+
+  await waitFor(() => {
+    expect(mockMutate).toHaveBeenCalledWith({
+      input: { applicationId: 'test-app-id', message: 'Test note' }
+    });
+  });
+});
+
+// Step 3: Validation (use findByText for async errors)
+it('should show validation error when note is empty', async () => {
+  const { user } = await render(<AddNoteModal isOpen={true} onToggle={() => {}} />);
+  const saveButton = screen.getByRole('button', { name: 'Save note' });
+  await user.click(saveButton);
+
+  expect(await screen.findByText('Note is required')).toBeInTheDocument();
+  expect(mockMutate).not.toHaveBeenCalled();
+});
+
+// Step 4: Success/Error states (trigger captured callbacks)
+it('should display success message on successful submission', async () => {
+  const { user } = await render(<AddNoteModal isOpen={true} onToggle={() => {}} />);
+  // ... submit form ...
+  await waitFor(() => expect(mockMutate).toHaveBeenCalled());
+
+  act(() => {
+    capturedOnSuccess?.();
+  });
+
+  expect(screen.getByText(SUCCESS_MESSAGES.ADD_NOTE)).toBeInTheDocument();
+});
+```
+
+**Common Pitfalls to Avoid:**
+
+- ❌ Using complex mock implementations that try to mimic the real hook behavior
+- ❌ Not capturing callbacks during hook setup
+- ❌ Using fake timers unnecessarily
+- ❌ Using `userEvent.type()` for large text strings (500+ chars = timeout)
+- ❌ Not using `await waitFor()` when checking if mutation was called
+- ❌ Trying to test success/error flows without triggering captured callbacks
+
+**When to Use Which:**
+
+- **`fireEvent.change()`**: Text inputs (especially large text), fast and reliable
+- **`user.click()`**: Buttons, links, interactive elements
+- **`user.type()`**: Small text inputs where you want to test character-by-character entry
+- **`screen.findByText()`**: Async content (validation errors, success messages)
+- **`screen.getByText()`**: Sync content (already rendered)
+- **`screen.queryByText()`**: Testing absence of elements
+
+**Reference Example:** See `apps/admin-portal/src/pages/Accreditation/Application/modals/AddNoteModal/AddNoteModal.test.tsx` for complete working example.
+
 ## Engineering Principles
 
 Follow these core principles when designing and writing code:
@@ -442,6 +599,10 @@ pnpm build --mode=test
 - **Focus tests on actual displayed data, not labels**
 - **Regular cleanup of unused code and parameters**
 - **Simplify hook interfaces to only include used functionality**
+- **Capture mutation callbacks during mock setup for testing success/error states**
+- **Use `fireEvent.change()` for text inputs and `user.click()` for buttons**
+- **Build tests incrementally, verifying each test passes before adding the next**
+- **Use `screen.findByText()` for async content like validation errors**
 
 ### ❌ AVOID:
 
@@ -457,6 +618,11 @@ pnpm build --mode=test
 - **Keeping unused parameters "just in case" - remove them**
 - **Complex abstractions that no one actually uses**
 - **Testing deprecated functionality that's been refactored out**
+- **Trying to mock callbacks in the `mutate()` call - capture them during hook setup instead**
+- **Using `userEvent.type()` for large text inputs (500+ chars) - causes test timeouts**
+- **Using `vi.useFakeTimers()` in form tests - interferes with validation**
+- **Complex mock implementations that try to replicate real hook behavior**
+- **Adding all tests at once - build incrementally and verify each works**
 
 ## Modal Types Distinction
 
