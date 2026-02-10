@@ -406,7 +406,7 @@ beforeEach(() => {
 5. **Avoid fake timers** in form tests - they interfere with validation
 6. **Use `screen.findByText()`** for validation errors (waits for element to appear)
 7. **Test incrementally** - add one test at a time and verify it passes
-8. **Handle timers properly** - if component uses `setTimeout`, enable fake timers AFTER async operations complete
+8. **Handle timers properly** - if component uses `setTimeout`, enable fake timers AFTER async operations complete, and always clear timers before restoring real timers
 
 **Handling `setTimeout` in Components:**
 
@@ -441,8 +441,9 @@ it('should close modal after 2 seconds on successful submission', async () => {
   expect(mockOnToggle).toHaveBeenCalled();
 });
 
-// ✅ Use afterEach to always restore real timers
+// ✅ Always clear timers before restoring to prevent leaks
 afterEach(() => {
+  vi.clearAllTimers();
   vi.useRealTimers();
 });
 ```
@@ -511,6 +512,7 @@ it('should display success message on successful submission', async () => {
 - ❌ Using complex mock implementations that try to mimic the real hook behavior
 - ❌ Not capturing callbacks during hook setup
 - ❌ Enabling fake timers BEFORE async operations (causes timeouts in `render()`, `waitFor()`, etc.)
+- ❌ Not clearing timers before restoring real timers (causes timer leaks and flaky tests)
 - ❌ Not restoring real timers in `afterEach()` (causes subsequent tests to fail)
 - ❌ Using `userEvent.type()` for large text strings (500+ chars = timeout)
 - ❌ Not using `await waitFor()` when checking if mutation was called
@@ -657,7 +659,7 @@ pnpm build --mode=test
 - **Build tests incrementally, verifying each test passes before adding the next**
 - **Use `screen.findByText()` for async content like validation errors**
 - **Enable fake timers AFTER async operations complete, not before**
-- **Always restore real timers in `afterEach(() => vi.useRealTimers())`**
+- **Clear all timers before restoring real timers in `afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); })`**
 - **Use `act()` when triggering callbacks or advancing timers**
 
 ### ❌ AVOID:
