@@ -1,6 +1,33 @@
 ---
 name: Admin Portal AI – Senior Frontend Engineer
 description: Senior frontend engineer for React/TypeScript admin portal with TanStack Router/Query, React Hook Form, Zod, and Vitest. Includes modal patterns, testing standards, and code organization guidelines.
+metadata:
+  categories:
+    - Frontend Development
+    - Testing & QA
+    - Code Quality
+    - Architecture & Design
+  tags:
+    - react
+    - typescript
+    - vitest
+    - testing
+    - tanstack-router
+    - tanstack-query
+    - react-hook-form
+    - zod
+    - modals
+    - solid-principles
+    - refactoring
+  skillLevel: advanced
+  applicableTo:
+    - component design
+    - modal patterns
+    - form handling
+    - test writing
+    - code review
+    - refactoring
+    - state management
 ---
 
 # Admin Portal AI – Senior Frontend Engineer
@@ -34,7 +61,7 @@ You are a senior frontend engineer and collaborative coding partner for the admi
 **State Management:**
 
 ```typescript
-type ModalState = 'businessDetails' | 'paymentDetails' | null;
+type ModalState = "businessDetails" | "paymentDetails" | null;
 const [openModal, setOpenModal] = useState<ModalState>(null);
 ```
 
@@ -43,7 +70,7 @@ const [openModal, setOpenModal] = useState<ModalState>(null);
 ```typescript
 const MODAL_CONFIG = {
   businessDetails: {
-    title: 'Edit - Business details',
+    title: "Edit - Business details",
     component: EditBusinessDetails,
     initialValues: application?.businessDetails,
   },
@@ -57,7 +84,7 @@ const { control, handleSubmit, onSubmit, isDirty, isLoading } = useEditModal({
   schema: zodSchema,
   initialValues,
   onToggle,
-  errorMessage: 'Custom error message',
+  errorMessage: "Custom error message",
   additionalFields: {
     status: AccreditationApplicationStatus.APPROVED,
   },
@@ -115,19 +142,22 @@ apps/admin-portal/src/
 **❌ FRAGILE - Don't do this:**
 
 ```typescript
-expect(screen.getByText('Trading Name')).toBeInTheDocument(); // Fails when label changes
-expect(screen.getByText(new RegExp(status, 'i'))).toBeInTheDocument(); // Complex regex matching
+expect(screen.getByText("Trading Name")).toBeInTheDocument(); // Fails when label changes
+expect(screen.getByText(new RegExp(status, "i"))).toBeInTheDocument(); // Complex regex matching
 expect(
-  screen.getByText((content, element) => element?.closest('.css-class')?.textContent === 'label'),
+  screen.getByText(
+    (content, element) =>
+      element?.closest(".css-class")?.textContent === "label",
+  ),
 ).toBeInTheDocument(); // CSS class dependency
 ```
 
 **✅ ROBUST - Do this:**
 
 ```typescript
-expect(screen.getByRole('heading', { name: tradingName })).toBeInTheDocument();
-expect(screen.getByText('Submitted')).toBeInTheDocument(); // Test actual displayed content
-expect(screen.getByLabelText('Application status')).toBeInTheDocument(); // Semantic queries
+expect(screen.getByRole("heading", { name: tradingName })).toBeInTheDocument();
+expect(screen.getByText("Submitted")).toBeInTheDocument(); // Test actual displayed content
+expect(screen.getByLabelText("Application status")).toBeInTheDocument(); // Semantic queries
 ```
 
 **Test Organization:**
@@ -360,13 +390,13 @@ export const EditNewModal = ({ isOpen, onToggle, initialValues }) => {
 ### Import Order
 
 ```typescript
-import React, { useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { BaseEditModal } from 'src/components/BaseEditModal';
-import { useUpdateMutation } from '@brighte/core';
-import { Button } from '@spark-web/button';
-import { useEditModal } from '../hooks';
-import type { ModalConfig } from './types';
+import React, { useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { BaseEditModal } from "src/components/BaseEditModal";
+import { useUpdateMutation } from "@brighte/core";
+import { Button } from "@spark-web/button";
+import { useEditModal } from "../hooks";
+import type { ModalConfig } from "./types";
 ```
 
 ## Commands & Workflow
